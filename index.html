@@ -39,7 +39,12 @@
             padding: 15px;
             overflow-x: hidden;
             position: relative;
+            transition: background 1s ease;
         }
+        
+        .stars { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; opacity: 0; transition: opacity 1s ease; }
+        .star { position: absolute; background: #fff; border-radius: 50%; animation: twinkle 2s infinite; }
+        @keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
         
         .cloud { position: fixed; background: white; border-radius: 50%; opacity: 0.9; animation: float 20s infinite ease-in-out; z-index: 0; }
         .cloud::before, .cloud::after { content: ''; position: absolute; background: white; border-radius: 50%; }
@@ -102,6 +107,7 @@
     </style>
 </head>
 <body>
+    <div class="stars" id="stars"></div>
     <div class="cloud cloud1"></div>
     <div class="cloud cloud2"></div>
     <div class="cloud cloud3"></div>
@@ -496,6 +502,39 @@
             document.getElementById('gameOver').style.display = 'block';
         }
         
+        // 배경 색상 - 레벨별로 점점 어두워짐 (아침→저녁→밤)
+        const BACKGROUNDS = [
+            { sky: '#87CEEB', mid: '#E0F6FF', bottom: '#FFF5F5', clouds: 0.9, stars: 0 },      // 레벨 1: 맑은 낮
+            { sky: '#7EC8E3', mid: '#D4F1F9', bottom: '#FFE8E8', clouds: 0.85, stars: 0 },     // 레벨 2: 오후
+            { sky: '#F4A460', mid: '#FFB347', bottom: '#FFD1A4', clouds: 0.7, stars: 0 },      // 레벨 3: 노을
+            { sky: '#E07020', mid: '#FF6B6B', bottom: '#FF8C69', clouds: 0.5, stars: 0.1 },    // 레벨 4: 석양
+            { sky: '#4A3C6D', mid: '#6B5B8C', bottom: '#8B7BA8', clouds: 0.3, stars: 0.4 },    // 레벨 5: 해질녘
+            { sky: '#1a1a3e', mid: '#2d2d5a', bottom: '#3d3d6a', clouds: 0.1, stars: 0.8 },    // 레벨 6: 밤
+            { sky: '#0d0d2b', mid: '#1a1a40', bottom: '#252550', clouds: 0, stars: 1 },        // 레벨 7+: 깊은 밤
+        ];
+        
+        function createStars() {
+            const starsEl = document.getElementById('stars');
+            starsEl.innerHTML = '';
+            for (let i = 0; i < 50; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 60 + '%';
+                star.style.width = star.style.height = (Math.random() * 3 + 1) + 'px';
+                star.style.animationDelay = Math.random() * 2 + 's';
+                starsEl.appendChild(star);
+            }
+        }
+        
+        function updateBackground() {
+            const bgIndex = Math.min(level - 1, BACKGROUNDS.length - 1);
+            const bg = BACKGROUNDS[bgIndex];
+            document.body.style.background = `linear-gradient(180deg, ${bg.sky} 0%, ${bg.mid} 50%, ${bg.bottom} 100%)`;
+            document.querySelectorAll('.cloud').forEach(c => c.style.opacity = bg.clouds);
+            document.getElementById('stars').style.opacity = bg.stars;
+        }
+        
         function restartGame() {
             score = 0; lives = 3; level = 1; combo = 0; roundsInLevel = 0; currentStage = 0; generation = 0; gameRunning = true;
             document.getElementById('score').textContent = score;
@@ -503,6 +542,7 @@
             document.getElementById('level').textContent = level;
             document.getElementById('gameOver').style.display = 'none';
             updateStageName();
+            updateBackground();
             nextRound();
         }
         
@@ -512,10 +552,13 @@
             document.getElementById('levelUp').style.display = 'none';
             gameRunning = true;
             updateStageName();
+            updateBackground();
             nextRound();
         }
         
+        createStars();
         updateStageName();
+        updateBackground();
         nextRound();
         
         let player, musicPlaying = false;

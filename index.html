@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🦄 유니콘 성장 게임</title>
+    <style>
+        .music-btn {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,0.3);
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 200;
+            backdrop-filter: blur(5px);
+            transition: transform 0.2s;
+        }
+        .music-btn:active { transform: scale(0.9); }
+        .music-btn.playing { animation: pulse 1s infinite; }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.4); }
+            50% { box-shadow: 0 0 0 10px rgba(255,255,255,0); }
+        }
+        #ytPlayer { position: fixed; top: -1000px; left: -1000px; width: 1px; height: 1px; pointer-events: none; }
+        * { margin: 0; padding: 0; box-sizing: border-box; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 50%, #FFF5F5 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: 'Segoe UI', sans-serif;
+            padding: 15px;
+            overflow-x: hidden;
+            position: relative;
+        }
+        
+        .cloud { position: fixed; background: white; border-radius: 50%; opacity: 0.9; animation: float 20s infinite ease-in-out; z-index: 0; }
+        .cloud::before, .cloud::after { content: ''; position: absolute; background: white; border-radius: 50%; }
+        .cloud1 { width: 100px; height: 40px; top: 10%; left: -100px; animation-duration: 25s; }
+        .cloud1::before { width: 50px; height: 50px; top: -25px; left: 15px; }
+        .cloud1::after { width: 60px; height: 60px; top: -35px; left: 40px; }
+        .cloud2 { width: 120px; height: 50px; top: 25%; left: -120px; animation-duration: 30s; animation-delay: 5s; }
+        .cloud2::before { width: 60px; height: 60px; top: -30px; left: 20px; }
+        .cloud2::after { width: 70px; height: 70px; top: -40px; left: 50px; }
+        .cloud3 { width: 80px; height: 35px; top: 15%; left: -80px; animation-duration: 22s; animation-delay: 10s; }
+        .cloud3::before { width: 40px; height: 40px; top: -20px; left: 10px; }
+        .cloud3::after { width: 50px; height: 50px; top: -30px; left: 30px; }
+        @keyframes float { 0% { transform: translateX(0); } 100% { transform: translateX(calc(100vw + 200px)); } }
+        
+        .header { text-align: center; color: #fff; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .header h1 { font-size: 1.6em; margin-bottom: 8px; }
+        .stage-name { font-size: 1.3em; margin-bottom: 10px; padding: 8px 20px; background: rgba(255,255,255,0.3); border-radius: 20px; display: inline-block; }
+        .stats { display: flex; justify-content: center; gap: 12px; font-size: 1.1em; }
+        .stat { background: rgba(255,255,255,0.25); padding: 6px 14px; border-radius: 20px; backdrop-filter: blur(5px); }
+        
+        .unicorn-container {
+            background: rgba(255,255,255,0.4);
+            border-radius: 30px;
+            padding: 20px;
+            margin: 15px 0;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            transition: all 0.5s ease;
+            animation: jump 0.8s infinite ease-in-out;
+            z-index: 10;
+        }
+        @keyframes jump { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+        
+        #unicornCanvas { display: block; }
+        .instruction { color: #fff; font-size: 1.2em; text-align: center; margin: 10px 0; padding: 10px 18px; background: rgba(0,0,0,0.3); border-radius: 20px; }
+        .color-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; max-width: 320px; }
+        .color-btn { height: 65px; border: none; border-radius: 18px; cursor: pointer; transition: all 0.15s; box-shadow: 0 5px 12px rgba(0,0,0,0.3); position: relative; overflow: hidden; }
+        .color-btn::after { content: ''; position: absolute; top: 5px; left: 15%; width: 70%; height: 30%; background: linear-gradient(rgba(255,255,255,0.4), transparent); border-radius: 50%; }
+        .color-btn:active { transform: scale(0.92); }
+        .color-btn.correct { animation: correctPulse 0.5s ease; }
+        .color-btn.wrong { animation: wrongShake 0.4s ease; }
+        @keyframes correctPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); box-shadow: 0 0 25px rgba(255,255,255,0.8); } }
+        @keyframes wrongShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+        
+        .message { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255,255,255,0.95); padding: 30px; border-radius: 25px; text-align: center; display: none; z-index: 100; box-shadow: 0 15px 40px rgba(0,0,0,0.3); max-width: 90%; }
+        .message h2 { font-size: 1.8em; margin-bottom: 10px; color: #764ba2; }
+        .message p { font-size: 1.2em; color: #666; margin-bottom: 15px; }
+        .message .evolution { font-size: 1.4em; color: #e94560; margin: 10px 0; }
+        .message button { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; padding: 14px 35px; border-radius: 25px; font-size: 1.1em; cursor: pointer; }
+        
+        .combo { position: fixed; top: 18%; left: 50%; transform: translateX(-50%); font-size: 2em; font-weight: bold; color: #fff; text-shadow: 0 0 20px rgba(255,215,0,0.8); opacity: 0; pointer-events: none; }
+        .combo.show { animation: comboFloat 0.8s ease-out forwards; }
+        @keyframes comboFloat { 0% { opacity: 0; transform: translateX(-50%) scale(0.5); } 50% { opacity: 1; transform: translateX(-50%) scale(1.2); } 100% { opacity: 0; transform: translateX(-50%) translateY(-20px); } }
+        
+        .voice-msg { position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 2.2em; font-weight: bold; padding: 20px 40px; border-radius: 30px; z-index: 150; opacity: 0; pointer-events: none; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .voice-msg.correct { background: linear-gradient(135deg, #ff9ff3, #f8b500); color: #fff; }
+        .voice-msg.wrong { background: linear-gradient(135deg, #74b9ff, #a29bfe); color: #fff; }
+        .voice-msg.show { animation: voicePop 1.5s ease-out forwards; }
+        @keyframes voicePop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); } 80% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); } }
+    </style>
+</head>
+<body>
+    <div class="cloud cloud1"></div>
+    <div class="cloud cloud2"></div>
+    <div class="cloud cloud3"></div>
+    
+    <button class="music-btn" id="musicBtn" onclick="toggleMusic()">🔇</button>
+    <div id="ytPlayer"></div>
+    
+    <div class="header">
+        <h1>🦄 유니콘 성장 게임</h1>
+        <div class="stage-name" id="stageName">🥚 유니콘 알</div>
+        <div class="stats">
+            <div class="stat">⭐ <span id="score">0</span></div>
+            <div class="stat">❤️ <span id="lives">3</span></div>
+            <div class="stat">Lv.<span id="level">1</span></div>
+        </div>
+    </div>
+    
+    <div class="unicorn-container" id="unicornContainer">
+        <canvas id="unicornCanvas"></canvas>
+    </div>
+    
+    <div class="instruction" id="instruction">👆 리본 색깔을 찾아요!</div>
+    <div class="color-buttons" id="colorButtons"></div>
+    <div class="combo" id="combo">🔥 COMBO!</div>
+    <div class="voice-msg" id="voiceMsg"></div>
+    
+    <div class="message" id="gameOver">
+        <h2>💫 게임 오버!</h2>
+        <p>최종 점수: <span id="finalScore">0</span></p>
+        <button onclick="restartGame()">다시 하기</button>
+    </div>
+    
+    <div class="message" id="levelUp">
+        <h2>🎉 레벨 업!</h2>
+        <div class="evolution" id="evolutionText"></div>
+        <p>레벨 <span id="newLevel">2</span></p>
+        <button onclick="startNextLevel()">계속하기</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('unicornCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const BASE_STAGES = [
+            { name: '🥚 유니콘 알', type: 'egg', size: 200 },
+            { name: '🍼 아기 유니콘', type: 'baby', size: 260 },
+            { name: '🎀 언니 유니콘', type: 'sister', size: 300 },
+            { name: '👰🤵 결혼식', type: 'wedding', size: 340 },
+            { name: '🥚 아기 탄생!', type: 'newborn', size: 220 },
+            { name: '👵👴 할머니 할아버지', type: 'grandparents', size: 360 }
+        ];
+        
+        let generation = 0;
+        function getStageByIndex(idx) { return BASE_STAGES[idx % BASE_STAGES.length]; }
+        
+        const COLORS = [
+            { name: '빨강', hex: '#ff6b6b' }, { name: '주황', hex: '#ffa502' }, { name: '노랑', hex: '#ffd93d' },
+            { name: '초록', hex: '#6bcb77' }, { name: '파랑', hex: '#4d96ff' }, { name: '보라', hex: '#9b59b6' },
+            { name: '분홍', hex: '#ff9ff3' }, { name: '하늘', hex: '#74b9ff' }, { name: '민트', hex: '#55efc4' }
+        ];
+        
+        let score = 0, lives = 3, level = 1, combo = 0, currentColor = null, gameRunning = true, roundsInLevel = 0, currentStage = 0;
+        
+        function getStage() { return getStageByIndex(currentStage); }
+        
+        function updateStageName() {
+            const stage = getStage();
+            let name = stage.name;
+            if (generation > 0) name += ` (${generation}세대)`;
+            document.getElementById('stageName').textContent = name;
+            document.getElementById('instruction').textContent = (stage.type === 'egg' || stage.type === 'newborn') ? '👆 리본 색깔을 찾아요!' : '👆 갈기 색깔을 찾아요!';
+        }
+        
+        function drawSquirtle(x, y, size) {
+            const s = size;
+            ctx.fillStyle = '#5dade2';
+            ctx.beginPath(); ctx.ellipse(x, y + s*0.1, s*0.4, s*0.45, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#f7dc6f';
+            ctx.beginPath(); ctx.ellipse(x, y + s*0.15, s*0.28, s*0.32, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#5dade2';
+            ctx.beginPath(); ctx.arc(x, y - s*0.35, s*0.3, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.beginPath(); ctx.ellipse(x - s*0.12, y - s*0.4, s*0.1, s*0.12, 0, 0, Math.PI * 2); ctx.ellipse(x + s*0.12, y - s*0.4, s*0.1, s*0.12, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#1a1a2e';
+            ctx.beginPath(); ctx.arc(x - s*0.1, y - s*0.38, s*0.05, 0, Math.PI * 2); ctx.arc(x + s*0.14, y - s*0.38, s*0.05, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#2c3e50'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(x, y - s*0.28, s*0.1, 0.2, Math.PI - 0.2); ctx.stroke();
+        }
+        
+        function drawEgg(ribbonColor) {
+            const stage = getStage();
+            const size = stage.size;
+            canvas.width = size; canvas.height = size;
+            ctx.clearRect(0, 0, size, size);
+            const cx = size / 2, cy = size / 2 + 10;
+            
+            ctx.fillStyle = 'rgba(0,0,0,0.1)';
+            ctx.beginPath(); ctx.ellipse(cx, cy + 50, 50, 15, 0, 0, Math.PI * 2); ctx.fill();
+            
+            const gradient = ctx.createLinearGradient(cx - 50, cy - 60, cx + 50, cy + 60);
+            gradient.addColorStop(0, '#fff'); gradient.addColorStop(0.5, '#ffeef8'); gradient.addColorStop(1, '#ffe4f0');
+            ctx.fillStyle = gradient;
+            ctx.beginPath(); ctx.ellipse(cx, cy, 55, 70, 0, 0, Math.PI * 2); ctx.fill();
+            
+            ctx.fillStyle = 'rgba(255,255,255,0.8)';
+            ctx.beginPath(); ctx.ellipse(cx - 25, cy - 35, 12, 18, -0.3, 0, Math.PI * 2); ctx.fill();
+            
+            ctx.fillStyle = 'rgba(255,182,193,0.6)';
+            ctx.beginPath(); ctx.moveTo(cx, cy + 5); ctx.bezierCurveTo(cx - 25, cy - 15, cx - 25, cy - 35, cx, cy - 20); ctx.bezierCurveTo(cx + 25, cy - 35, cx + 25, cy - 15, cx, cy + 5); ctx.fill();
+            
+            ctx.fillStyle = ribbonColor;
+            ctx.beginPath(); ctx.ellipse(cx - 35, cy - 55, 22, 14, -0.6, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(cx + 10, cy - 70, 22, 14, 0.6, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(cx - 12, cy - 60, 10, 0, Math.PI * 2); ctx.fill();
+        }
+        
+        function drawUnicorn(maneColor) {
+            const stage = getStage();
+            if (stage.type === 'egg') { drawEgg(maneColor); return; }
+            if (stage.type === 'newborn') { drawEgg(maneColor); ctx.font = `${stage.size*0.15}px serif`; ctx.fillText('✨', stage.size*0.1, stage.size*0.3); ctx.fillText('🎉', stage.size*0.75, stage.size*0.25); return; }
+            
+            const size = stage.size, type = stage.type;
+            let canvasWidth = size;
+            if (type === 'baby') canvasWidth = size + 80;
+            if (type === 'wedding') canvasWidth = size + 180;
+            if (type === 'grandparents') canvasWidth = size + 160;
+            canvas.width = canvasWidth; canvas.height = size * 1.15;
+            ctx.clearRect(0, 0, canvasWidth, size * 1.15);
+            
+            const cx = type === 'baby' ? size / 2 - 20 : size / 2;
+            const cy = size * 0.55, r = size * 0.25;
+            
+            if (type === 'baby') drawSquirtle(size + 15, cy + 20, 70);
+            
+            // 유령 조상들
+            if (generation > 0 && (type === 'baby' || type === 'sister')) {
+                ctx.globalAlpha = 0.4;
+                for (let g = 0; g < Math.min(generation, 5); g++) {
+                    ctx.font = `${25 - g*3}px serif`;
+                    ctx.fillText('👻', size * 0.3 + g * 20, 50 + g * 15);
+                    ctx.fillText('👻', size * 0.5 + g * 15, 40 + g * 20);
+                }
+                ctx.globalAlpha = 1.0;
+            }
+            
+            // 몸통
+            ctx.fillStyle = type === 'grandparents' ? '#f8f8f8' : '#fff';
+            ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+            
+            // 뿔
+            const hornHeight = type === 'grandparents' ? 1.5 : (type === 'baby' ? 1.8 : 2.0);
+            const gradient = ctx.createLinearGradient(cx, cy - r * hornHeight, cx, cy - r * 0.8);
+            gradient.addColorStop(0, '#ffd93d'); gradient.addColorStop(0.5, '#ff9ff3'); gradient.addColorStop(1, '#74b9ff');
+            ctx.fillStyle = gradient;
+            ctx.beginPath(); ctx.moveTo(cx - 8, cy - r * 0.85); ctx.lineTo(cx, cy - r * hornHeight); ctx.lineTo(cx + 8, cy - r * 0.85); ctx.closePath(); ctx.fill();
+            
+            // 귀
+            ctx.fillStyle = type === 'grandparents' ? '#f8f8f8' : '#fff';
+            ctx.beginPath(); ctx.ellipse(cx - r * 0.55, cy - r * 0.65, r*0.15, r*0.35, -0.4, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(cx + r * 0.55, cy - r * 0.65, r*0.15, r*0.35, 0.4, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffb6c1';
+            ctx.beginPath(); ctx.ellipse(cx - r * 0.55, cy - r * 0.6, r*0.08, r*0.2, -0.4, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(cx + r * 0.55, cy - r * 0.6, r*0.08, r*0.2, 0.4, 0, Math.PI * 2); ctx.fill();
+            
+            // 아기 리본
+            if (type === 'baby') {
+                ctx.fillStyle = '#ff6b9d';
+                ctx.beginPath(); ctx.ellipse(cx - r * 0.7, cy - r * 0.85, r*0.18, r*0.1, -0.5, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.ellipse(cx - r * 0.5, cy - r * 0.9, r*0.18, r*0.1, 0.5, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(cx - r * 0.6, cy - r * 0.85, r*0.07, 0, Math.PI * 2); ctx.fill();
+            }
+            
+            // 언니 리본
+            if (type === 'sister') {
+                ctx.fillStyle = '#ff69b4';
+                ctx.beginPath(); ctx.ellipse(cx - r * 0.75, cy - r * 0.9, r*0.25, r*0.14, -0.5, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.ellipse(cx - r * 0.45, cy - r * 0.98, r*0.25, r*0.14, 0.5, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(cx - r * 0.6, cy - r * 0.9, r*0.1, 0, Math.PI * 2); ctx.fill();
+            }
+            
+            // 결혼식
+            if (type === 'wedding') {
+                const hx = cx + r * 1.4, hy = cy, hr = r * 1.15;
+                ctx.fillStyle = '#fff';
+                ctx.beginPath(); ctx.arc(hx, hy, hr, 0, Math.PI * 2); ctx.fill();
+                const hGrad = ctx.createLinearGradient(hx, hy - hr * 2, hx, hy - hr * 0.8);
+                hGrad.addColorStop(0, '#87CEEB'); hGrad.addColorStop(0.5, '#9b59b6'); hGrad.addColorStop(1, '#ffd93d');
+                ctx.fillStyle = hGrad;
+                ctx.beginPath(); ctx.moveTo(hx - 6, hy - hr * 0.85); ctx.lineTo(hx, hy - hr * 2); ctx.lineTo(hx + 6, hy - hr * 0.85); ctx.closePath(); ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.beginPath(); ctx.ellipse(hx - hr * 0.5, hy - hr * 0.6, hr*0.12, hr*0.3, -0.4, 0, Math.PI * 2); ctx.ellipse(hx + hr * 0.5, hy - hr * 0.6, hr*0.12, hr*0.3, 0.4, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#74b9ff';
+                for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.ellipse(hx - hr * 0.8 - i * 3, hy - hr * 0.3 + i * 8, 8, 12, -0.4, 0, Math.PI * 2); ctx.fill(); }
+                ctx.fillStyle = '#2d3436';
+                ctx.beginPath(); ctx.ellipse(hx - hr*0.25, hy - hr*0.05, hr*0.1, hr*0.15, 0, 0, Math.PI * 2); ctx.ellipse(hx + hr*0.25, hy - hr*0.05, hr*0.1, hr*0.15, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(hx - hr*0.28, hy - hr*0.1, hr*0.04, 0, Math.PI * 2); ctx.arc(hx + hr*0.22, hy - hr*0.1, hr*0.04, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = '#ff9999'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(hx, hy + hr*0.3, hr*0.12, 0.2, Math.PI - 0.2); ctx.stroke();
+                ctx.fillStyle = '#1a1a2e';
+                ctx.beginPath(); ctx.ellipse(hx - hr*0.2, hy + hr*0.55, hr*0.15, hr*0.08, -0.3, 0, Math.PI * 2); ctx.ellipse(hx + hr*0.2, hy + hr*0.55, hr*0.15, hr*0.08, 0.3, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(hx, hy + hr*0.55, hr*0.06, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.beginPath(); ctx.moveTo(hx - hr*0.25, hy + hr*0.65); ctx.quadraticCurveTo(hx - hr*0.5, hy + hr*0.55, hx - hr*0.55, hy + hr*0.9); ctx.lineTo(hx - hr*0.45, hy + hr*0.95); ctx.quadraticCurveTo(hx - hr*0.3, hy + hr*0.7, hx - hr*0.05, hy + hr*0.65); ctx.closePath(); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(hx + hr*0.05, hy + hr*0.65); ctx.quadraticCurveTo(hx + hr*0.4, hy + hr*0.5, hx + hr*0.6, hy + hr*0.7); ctx.lineTo(hx + hr*0.55, hy + hr*0.8); ctx.quadraticCurveTo(hx + hr*0.3, hy + hr*0.65, hx + hr*0.2, hy + hr*0.7); ctx.closePath(); ctx.fill();
+                ctx.fillStyle = '#ffd700'; ctx.beginPath(); ctx.arc(hx - hr*0.5, hy + hr*0.95, hr*0.08, 0, Math.PI * 2); ctx.arc(hx + hr*0.58, hy + hr*0.77, hr*0.08, 0, Math.PI * 2); ctx.fill();
+                
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.beginPath(); ctx.moveTo(cx - r*0.5, cy - r*0.4); ctx.quadraticCurveTo(cx - r*1.0, cy + r*0.3, cx - r*0.7, cy + r*1.0); ctx.lineTo(cx + r*0.5, cy + r*1.0); ctx.quadraticCurveTo(cx + r*0.7, cy + r*0.3, cx + r*0.4, cy - r*0.4); ctx.closePath(); ctx.fill();
+                ctx.fillStyle = '#ffd700';
+                ctx.beginPath(); ctx.moveTo(cx - r*0.35, cy - r * 0.7); ctx.lineTo(cx - r*0.25, cy - r * 0.9); ctx.lineTo(cx - r*0.1, cy - r * 0.73); ctx.lineTo(cx, cy - r * 0.95); ctx.lineTo(cx + r*0.1, cy - r * 0.73); ctx.lineTo(cx + r*0.25, cy - r * 0.9); ctx.lineTo(cx + r*0.35, cy - r * 0.7); ctx.closePath(); ctx.fill();
+                ctx.fillStyle = '#ff69b4'; ctx.beginPath(); ctx.arc(cx, cy - r * 0.82, r*0.06, 0, Math.PI * 2); ctx.fill();
+                ctx.font = `${r*0.3}px serif`; ctx.fillText('💕', cx + r*0.5, cy - r*0.9); ctx.fillText('💗', cx + r*0.9, cy - r*0.5);
+            }
+            
+            // 할머니 할아버지
+            if (type === 'grandparents') {
+                const gx = cx + r * 1.3, gy = cy, gr = r * 0.9;
+                ctx.fillStyle = '#f5f5f5'; ctx.beginPath(); ctx.arc(gx, gy, gr, 0, Math.PI * 2); ctx.fill();
+                const gGrad = ctx.createLinearGradient(gx, gy - gr * 1.4, gx, gy - gr * 0.8);
+                gGrad.addColorStop(0, '#c0c0c0'); gGrad.addColorStop(1, '#ffd93d');
+                ctx.fillStyle = gGrad; ctx.beginPath(); ctx.moveTo(gx - 5, gy - gr * 0.85); ctx.lineTo(gx, gy - gr * 1.4); ctx.lineTo(gx + 5, gy - gr * 0.85); ctx.closePath(); ctx.fill();
+                ctx.fillStyle = '#f5f5f5';
+                ctx.beginPath(); ctx.ellipse(gx - gr * 0.5, gy - gr * 0.55, gr*0.1, gr*0.25, -0.4, 0, Math.PI * 2); ctx.ellipse(gx + gr * 0.5, gy - gr * 0.55, gr*0.1, gr*0.25, 0.4, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#a0a0a0';
+                for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.ellipse(gx - gr * 0.75 - i * 2, gy - gr * 0.25 + i * 7, 6, 10, -0.4, 0, Math.PI * 2); ctx.fill(); }
+                ctx.fillStyle = '#2d3436'; ctx.beginPath(); ctx.ellipse(gx - gr*0.22, gy, gr*0.08, gr*0.12, 0, 0, Math.PI * 2); ctx.ellipse(gx + gr*0.22, gy, gr*0.08, gr*0.12, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = '#4a4a4a'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.ellipse(gx - gr*0.22, gy + gr*0.02, gr*0.15, gr*0.12, 0, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.ellipse(gx + gr*0.22, gy + gr*0.02, gr*0.15, gr*0.12, 0, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(gx - gr*0.07, gy + gr*0.02); ctx.lineTo(gx + gr*0.07, gy + gr*0.02); ctx.stroke();
+                ctx.strokeStyle = '#ff9999'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(gx, gy + gr*0.3, gr*0.1, 0.3, Math.PI - 0.3); ctx.stroke();
+                ctx.strokeStyle = '#c0c0c0'; ctx.lineWidth = 1.5;
+                for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(gx + i*gr*0.15, gy + gr*0.4); ctx.lineTo(gx + i*gr*0.2, gy + gr*0.55); ctx.stroke(); }
+                ctx.fillStyle = '#f5f5f5';
+                ctx.beginPath(); ctx.moveTo(gx - gr*0.2, gy + gr*0.65); ctx.quadraticCurveTo(gx - gr*0.45, gy + gr*0.55, gx - gr*0.5, gy + gr*0.85); ctx.lineTo(gx - gr*0.4, gy + gr*0.9); ctx.quadraticCurveTo(gx - gr*0.25, gy + gr*0.7, gx - gr*0.05, gy + gr*0.65); ctx.closePath(); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(gx + gr*0.05, gy + gr*0.65); ctx.quadraticCurveTo(gx + gr*0.35, gy + gr*0.5, gx + gr*0.5, gy + gr*0.7); ctx.lineTo(gx + gr*0.45, gy + gr*0.8); ctx.quadraticCurveTo(gx + gr*0.25, gy + gr*0.65, gx + gr*0.15, gy + gr*0.7); ctx.closePath(); ctx.fill();
+                ctx.fillStyle = '#c0c0c0'; ctx.beginPath(); ctx.arc(gx - gr*0.45, gy + gr*0.9, gr*0.07, 0, Math.PI * 2); ctx.arc(gx + gr*0.48, gy + gr*0.77, gr*0.07, 0, Math.PI * 2); ctx.fill();
+                ctx.font = `${r*0.25}px serif`; ctx.fillText('💕', cx + r*0.5, cy - r*0.8);
+                
+                ctx.strokeStyle = 'rgba(200,200,200,0.5)'; ctx.lineWidth = 1;
+                for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(cx - r*0.3, cy + r*0.3 + i*4, r*0.15, 0.3, Math.PI - 0.3, true); ctx.stroke(); }
+            }
+            
+            // 갈기
+            ctx.fillStyle = maneColor;
+            const maneCount = type === 'baby' ? 4 : (type === 'grandparents' ? 5 : 6);
+            const maneSize = size * 0.055;
+            for (let i = 0; i < maneCount; i++) { ctx.beginPath(); ctx.ellipse(cx - r * 0.85 - i * (size * 0.012), cy - r * 0.35 + i * (size * 0.05), maneSize, maneSize * 1.5, -0.4, 0, Math.PI * 2); ctx.fill(); }
+            
+            // 눈
+            const eyeScale = type === 'baby' ? 1.5 : (type === 'sister' ? 1.2 : (type === 'grandparents' ? 0.9 : 1.0));
+            const eyeW = r * 0.14 * eyeScale, eyeH = r * 0.2 * eyeScale;
+            ctx.fillStyle = '#2d3436';
+            ctx.beginPath(); ctx.ellipse(cx - r*0.28, cy - r*0.05, eyeW, eyeH, 0, 0, Math.PI * 2); ctx.ellipse(cx + r*0.28, cy - r*0.05, eyeW, eyeH, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.beginPath(); ctx.arc(cx - r*0.32, cy - r*0.12, eyeW*0.4, 0, Math.PI * 2); ctx.arc(cx + r*0.24, cy - r*0.12, eyeW*0.4, 0, Math.PI * 2); ctx.fill();
+            
+            // 언니 속눈썹
+            if (type === 'sister') {
+                ctx.strokeStyle = '#2d3436'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+                for (let side = -1; side <= 1; side += 2) {
+                    for (let i = 0; i < 3; i++) {
+                        const ex = cx + side * r * 0.28, ey = cy - r * 0.05 - eyeH, angle = -0.5 + i * 0.5;
+                        ctx.beginPath(); ctx.moveTo(ex + Math.cos(angle - Math.PI/2) * eyeW * 0.7, ey + eyeH * 0.3); ctx.lineTo(ex + Math.cos(angle - Math.PI/2) * eyeW * 1.3, ey - eyeH * 0.2); ctx.stroke();
+                    }
+                }
+            }
+            
+            // 할머니 안경
+            if (type === 'grandparents') {
+                ctx.strokeStyle = '#8b4513'; ctx.lineWidth = 2.5;
+                ctx.beginPath(); ctx.ellipse(cx - r*0.28, cy, r*0.18, r*0.15, 0, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.ellipse(cx + r*0.28, cy, r*0.18, r*0.15, 0, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(cx - r*0.1, cy); ctx.lineTo(cx + r*0.1, cy); ctx.stroke();
+            }
+            
+            // 볼터치
+            ctx.fillStyle = 'rgba(255, 182, 193, 0.5)';
+            ctx.beginPath(); ctx.ellipse(cx - r*0.5, cy + r*0.22, r*0.13, r*0.08, 0, 0, Math.PI * 2); ctx.ellipse(cx + r*0.5, cy + r*0.22, r*0.13, r*0.08, 0, 0, Math.PI * 2); ctx.fill();
+            
+            // 입
+            ctx.strokeStyle = '#ff9999'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+            ctx.beginPath(); ctx.arc(cx, cy + r*0.35, r*0.15, 0.2, Math.PI - 0.2); ctx.stroke();
+            
+            // 다리
+            ctx.fillStyle = type === 'grandparents' ? '#f8f8f8' : '#fff';
+            ctx.beginPath(); ctx.moveTo(cx - r*0.3, cy + r*0.7); ctx.quadraticCurveTo(cx - r*0.6, cy + r*0.6, cx - r*0.65, cy + r*0.95); ctx.lineTo(cx - r*0.55, cy + r*1.0); ctx.quadraticCurveTo(cx - r*0.4, cy + r*0.75, cx - r*0.1, cy + r*0.7); ctx.closePath(); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(cx + r*0.1, cy + r*0.7); ctx.quadraticCurveTo(cx + r*0.5, cy + r*0.55, cx + r*0.7, cy + r*0.75); ctx.lineTo(cx + r*0.65, cy + r*0.85); ctx.quadraticCurveTo(cx + r*0.4, cy + r*0.7, cx + r*0.25, cy + r*0.75); ctx.closePath(); ctx.fill();
+            
+            // 발굽
+            ctx.fillStyle = '#ffd700';
+            ctx.beginPath(); ctx.arc(cx - r*0.6, cy + r*1.0, r*0.1, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(cx + r*0.68, cy + r*0.82, r*0.1, 0, Math.PI * 2); ctx.fill();
+        }
+        
+        function createColorButtons() {
+            const container = document.getElementById('colorButtons');
+            container.innerHTML = '';
+            const numButtons = Math.min(3 + currentStage, 6);
+            let availableColors = [...COLORS];
+            let selectedColors = [currentColor];
+            availableColors = availableColors.filter(c => c.hex !== currentColor.hex);
+            while (selectedColors.length < numButtons) {
+                const idx = Math.floor(Math.random() * availableColors.length);
+                selectedColors.push(availableColors[idx]);
+                availableColors.splice(idx, 1);
+            }
+            selectedColors.sort(() => Math.random() - 0.5);
+            selectedColors.forEach(color => {
+                const btn = document.createElement('button');
+                btn.className = 'color-btn';
+                btn.style.background = color.hex;
+                btn.onclick = () => checkAnswer(color, btn);
+                container.appendChild(btn);
+            });
+        }
+        
+        const CORRECT_MSGS = ['안재이 짱! 🌟', '안재이 이뻐요! 💕', '안재이 귀욤이! 🥰'];
+        const WRONG_MSGS = ['아빠 바보! 😝', '아빠 뚱뚱이! 🐷', '아빠 메롱! 😜'];
+        let correctIdx = 0, wrongIdx = 0;
+        
+        function showVoiceMessage(isCorrect) {
+            const msgEl = document.getElementById('voiceMsg');
+            let msg;
+            if (isCorrect) { msg = CORRECT_MSGS[correctIdx % CORRECT_MSGS.length]; correctIdx++; msgEl.className = 'voice-msg correct'; }
+            else { msg = WRONG_MSGS[wrongIdx % WRONG_MSGS.length]; wrongIdx++; msgEl.className = 'voice-msg wrong'; }
+            msgEl.textContent = msg;
+            msgEl.classList.remove('show');
+            void msgEl.offsetWidth;
+            msgEl.classList.add('show');
+            speakMessage(msg.replace(/[🌟💕🥰😝🐷😜]/g, ''));
+        }
+        
+        function speakMessage(text) {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'ko-KR';
+                utterance.rate = 1.1;
+                utterance.pitch = 1.2;
+                speechSynthesis.speak(utterance);
+            }
+        }
+        
+        function checkAnswer(selectedColor, btn) {
+            if (!gameRunning) return;
+            if (selectedColor.hex === currentColor.hex) {
+                btn.classList.add('correct');
+                showVoiceMessage(true);
+                combo++;
+                const points = 10 * (1 + Math.floor(combo / 3));
+                score += points;
+                document.getElementById('score').textContent = score;
+                if (combo >= 3 && combo % 3 === 0) showCombo();
+                roundsInLevel++;
+                if (roundsInLevel >= 3) {
+                    gameRunning = false;
+                    const currentType = getStage().type;
+                    const nextStage = getStageByIndex(currentStage + 1);
+                    if (currentType === 'grandparents') generation++;
+                    document.getElementById('evolutionText').textContent = `${getStage().name} → ${nextStage.name}`;
+                    if (generation > 0) document.getElementById('evolutionText').textContent += ` (${generation}세대 👻)`;
+                    document.getElementById('newLevel').textContent = level + 1;
+                    document.getElementById('levelUp').style.display = 'block';
+                } else { setTimeout(nextRound, 400); }
+            } else {
+                btn.classList.add('wrong');
+                showVoiceMessage(false);
+                combo = 0;
+                lives--;
+                document.getElementById('lives').textContent = lives;
+                if (lives <= 0) gameOver();
+                else setTimeout(() => btn.classList.remove('wrong'), 400);
+            }
+        }
+        
+        function showCombo() {
+            const comboEl = document.getElementById('combo');
+            comboEl.textContent = `🔥 COMBO x${combo}!`;
+            comboEl.classList.remove('show');
+            void comboEl.offsetWidth;
+            comboEl.classList.add('show');
+        }
+        
+        function nextRound() {
+            currentColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+            drawUnicorn(currentColor.hex);
+            createColorButtons();
+        }
+        
+        function gameOver() {
+            gameRunning = false;
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+        
+        function restartGame() {
+            score = 0; lives = 3; level = 1; combo = 0; roundsInLevel = 0; currentStage = 0; generation = 0; gameRunning = true;
+            document.getElementById('score').textContent = score;
+            document.getElementById('lives').textContent = lives;
+            document.getElementById('level').textContent = level;
+            document.getElementById('gameOver').style.display = 'none';
+            updateStageName();
+            nextRound();
+        }
+        
+        function startNextLevel() {
+            level++; roundsInLevel = 0; currentStage++;
+            document.getElementById('level').textContent = level;
+            document.getElementById('levelUp').style.display = 'none';
+            gameRunning = true;
+            updateStageName();
+            nextRound();
+        }
+        
+        updateStageName();
+        nextRound();
+        
+        let player, musicPlaying = false;
+        const tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(tag);
+        
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('ytPlayer', {
+                height: '1', width: '1',
+                videoId: 'VxxYwAzuk4k',
+                playerVars: { autoplay: 0, loop: 1, playlist: 'VxxYwAzuk4k' },
+                events: { onStateChange: (e) => { if (e.data === YT.PlayerState.ENDED) player.playVideo(); } }
+            });
+        }
+        
+        function toggleMusic() {
+            const btn = document.getElementById('musicBtn');
+            if (!player) return;
+            if (musicPlaying) { player.pauseVideo(); btn.textContent = '🔇'; btn.classList.remove('playing'); musicPlaying = false; }
+            else { player.playVideo(); btn.textContent = '🎵'; btn.classList.add('playing'); musicPlaying = true; }
+        }
+    </script>
+</body>
+</html>

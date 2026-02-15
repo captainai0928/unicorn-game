@@ -9,16 +9,18 @@
             position: fixed;
             top: 10px;
             right: 10px;
-            width: 50px;
-            height: 50px;
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
-            border: none;
-            background: rgba(255,255,255,0.3);
-            font-size: 24px;
+            border: 3px solid white;
+            background: rgba(255,105,180,0.7);
+            font-size: 28px;
             cursor: pointer;
-            z-index: 200;
+            z-index: 9999;
             backdrop-filter: blur(5px);
             transition: transform 0.2s;
+            -webkit-tap-highlight-color: rgba(255,255,255,0.3);
+            touch-action: manipulation;
         }
         .music-btn:active { transform: scale(0.9); }
         .music-btn.playing { animation: pulse 1s infinite; }
@@ -615,11 +617,26 @@
         nextRound();
         
         let musicPlaying = false;
-        const bgmAudio = document.getElementById('bgmAudio');
-        bgmAudio.volume = 0.4;
+        let bgmAudio = null;
+        
+        // 페이지 로드 후 오디오 초기화
+        window.addEventListener('DOMContentLoaded', function() {
+            bgmAudio = document.getElementById('bgmAudio');
+            if (bgmAudio) {
+                bgmAudio.volume = 0.4;
+            }
+        });
         
         function toggleMusic() {
             const btn = document.getElementById('musicBtn');
+            if (!bgmAudio) {
+                bgmAudio = document.getElementById('bgmAudio');
+                if (!bgmAudio) {
+                    alert('음악을 로드할 수 없습니다');
+                    return;
+                }
+                bgmAudio.volume = 0.4;
+            }
             if (musicPlaying) { 
                 bgmAudio.pause(); 
                 btn.textContent = '🔇'; 
@@ -632,7 +649,8 @@
                     musicPlaying = true;
                 }).catch(e => {
                     console.log('오디오 재생 실패:', e);
-                    btn.textContent = '🔇';
+                    alert('음악 재생 실패: ' + e.message);
+                    btn.textContent = '❌';
                 });
             }
         }

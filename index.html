@@ -479,15 +479,19 @@
             });
         }
         
-        const CORRECT_MSGS = ['안재이 짱! 🌟', '안재이 이뻐요! 💕', '안재이 귀욤이! 🥰'];
+        const CORRECT_MSGS = ['안재이 짱! 🌟', '안재이 이뻐요! 💕', '안재이 귀욤이! 🥰', '안나이모 사랑해! 💖'];
         const WRONG_MSGS = ['아빠 바보! 😝', '아빠 뚱뚱이! 🐷', '아빠 메롱! 😜'];
-        let correctIdx = 0, wrongIdx = 0;
         
         function showVoiceMessage(isCorrect) {
             const msgEl = document.getElementById('voiceMsg');
             let msg;
-            if (isCorrect) { msg = CORRECT_MSGS[correctIdx % CORRECT_MSGS.length]; correctIdx++; msgEl.className = 'voice-msg correct'; }
-            else { msg = WRONG_MSGS[wrongIdx % WRONG_MSGS.length]; wrongIdx++; msgEl.className = 'voice-msg wrong'; }
+            if (isCorrect) { 
+                msg = CORRECT_MSGS[Math.floor(Math.random() * CORRECT_MSGS.length)]; 
+                msgEl.className = 'voice-msg correct'; 
+            } else { 
+                msg = WRONG_MSGS[Math.floor(Math.random() * WRONG_MSGS.length)]; 
+                msgEl.className = 'voice-msg wrong'; 
+            }
             msgEl.textContent = msg;
             msgEl.classList.remove('show');
             void msgEl.offsetWidth;

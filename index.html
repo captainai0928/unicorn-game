@@ -561,7 +561,7 @@
         updateBackground();
         nextRound();
         
-        let player, musicPlaying = false;
+        let player, musicPlaying = false, playerReady = false;
         const tag = document.createElement('script');
         tag.src = 'https://www.youtube.com/iframe_api';
         document.head.appendChild(tag);
@@ -570,16 +570,47 @@
             player = new YT.Player('ytPlayer', {
                 height: '1', width: '1',
                 videoId: 'VxxYwAzuk4k',
-                playerVars: { autoplay: 0, loop: 1, playlist: 'VxxYwAzuk4k' },
-                events: { onStateChange: (e) => { if (e.data === YT.PlayerState.ENDED) player.playVideo(); } }
+                playerVars: { autoplay: 0, loop: 1, playlist: 'VxxYwAzuk4k', playsinline: 1 },
+                events: { 
+                    onReady: () => { 
+                        playerReady = true; 
+                        document.getElementById('musicBtn').style.background = 'rgba(255,255,255,0.5)';
+                        console.log('🎵 음악 준비됨!');
+                    },
+                    onStateChange: (e) => { 
+                        if (e.data === YT.PlayerState.ENDED) player.playVideo();
+                        if (e.data === YT.PlayerState.PLAYING) {
+                            musicPlaying = true;
+                            document.getElementById('musicBtn').textContent = '🎵';
+                            document.getElementById('musicBtn').classList.add('playing');
+                        }
+                    },
+                    onError: (e) => {
+                        console.log('YouTube 에러:', e.data);
+                        document.getElementById('musicBtn').textContent = '❌';
+                    }
+                }
             });
         }
         
         function toggleMusic() {
             const btn = document.getElementById('musicBtn');
-            if (!player) return;
-            if (musicPlaying) { player.pauseVideo(); btn.textContent = '🔇'; btn.classList.remove('playing'); musicPlaying = false; }
-            else { player.playVideo(); btn.textContent = '🎵'; btn.classList.add('playing'); musicPlaying = true; }
+            if (!playerReady) {
+                btn.textContent = '⏳';
+                setTimeout(() => { if (!playerReady) btn.textContent = '🔇'; }, 2000);
+                return;
+            }
+            if (musicPlaying) { 
+                player.pauseVideo(); 
+                btn.textContent = '🔇'; 
+                btn.classList.remove('playing'); 
+                musicPlaying = false; 
+            } else { 
+                player.playVideo(); 
+                btn.textContent = '🎵'; 
+                btn.classList.add('playing'); 
+                musicPlaying = true; 
+            }
         }
     </script>
 </body>

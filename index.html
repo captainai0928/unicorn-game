@@ -124,7 +124,7 @@
         <div class="stage-name" id="stageName">🥚 유니콘 알</div>
         <div class="stats">
             <div class="stat">⭐ <span id="score">0</span></div>
-            <div class="stat">❤️ <span id="lives">3</span></div>
+            <!-- 3진아웃 제거됨 -->
             <div class="stat">Lv.<span id="level">1</span></div>
         </div>
     </div>
@@ -237,7 +237,52 @@
         function drawUnicorn(maneColor) {
             const stage = getStage();
             if (stage.type === 'egg') { drawEgg(maneColor); return; }
-            if (stage.type === 'newborn') { drawEgg(maneColor); ctx.font = `${stage.size*0.15}px serif`; ctx.fillText('✨', stage.size*0.1, stage.size*0.3); ctx.fillText('🎉', stage.size*0.75, stage.size*0.25); return; }
+            if (stage.type === 'newborn') { 
+                // 할머니 할아버지 + 알 같이 표시
+                const size = 320;
+                canvas.width = size + 180; canvas.height = size * 1.1;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // 왼쪽에 할머니 (작게)
+                const gx = 70, gy = size * 0.5, gr = 45;
+                ctx.fillStyle = '#f5f5f5'; ctx.beginPath(); ctx.arc(gx, gy, gr, 0, Math.PI * 2); ctx.fill();
+                // 할머니 뿔
+                const gGrad = ctx.createLinearGradient(gx, gy - gr * 1.4, gx, gy - gr * 0.8);
+                gGrad.addColorStop(0, '#c0c0c0'); gGrad.addColorStop(1, '#ffd93d');
+                ctx.fillStyle = gGrad; ctx.beginPath(); ctx.moveTo(gx - 4, gy - gr * 0.85); ctx.lineTo(gx, gy - gr * 1.4); ctx.lineTo(gx + 4, gy - gr * 0.85); ctx.closePath(); ctx.fill();
+                // 할머니 눈
+                ctx.fillStyle = '#2d3436'; ctx.beginPath(); ctx.arc(gx - 12, gy, 4, 0, Math.PI * 2); ctx.arc(gx + 12, gy, 4, 0, Math.PI * 2); ctx.fill();
+                // 할머니 안경
+                ctx.strokeStyle = '#8b4513'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.ellipse(gx - 12, gy + 2, 10, 8, 0, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.ellipse(gx + 12, gy + 2, 10, 8, 0, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(gx - 2, gy + 2); ctx.lineTo(gx + 2, gy + 2); ctx.stroke();
+                // 할머니 갈기
+                ctx.fillStyle = '#a0a0a0';
+                for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.ellipse(gx - gr * 0.8 - i * 2, gy - gr * 0.2 + i * 8, 5, 8, -0.4, 0, Math.PI * 2); ctx.fill(); }
+                
+                // 오른쪽에 알 (리본 색깔)
+                const ex = size * 0.7, ey = size * 0.5;
+                ctx.fillStyle = 'rgba(0,0,0,0.1)';
+                ctx.beginPath(); ctx.ellipse(ex, ey + 60, 40, 12, 0, 0, Math.PI * 2); ctx.fill();
+                const eggGrad = ctx.createLinearGradient(ex - 40, ey - 50, ex + 40, ey + 50);
+                eggGrad.addColorStop(0, '#fff'); eggGrad.addColorStop(0.5, '#ffeef8'); eggGrad.addColorStop(1, '#ffe4f0');
+                ctx.fillStyle = eggGrad;
+                ctx.beginPath(); ctx.ellipse(ex, ey, 45, 58, 0, 0, Math.PI * 2); ctx.fill();
+                // 알 하트
+                ctx.fillStyle = 'rgba(255,182,193,0.6)';
+                ctx.beginPath(); ctx.moveTo(ex, ey + 5); ctx.bezierCurveTo(ex - 20, ey - 10, ex - 20, ey - 28, ex, ey - 16); ctx.bezierCurveTo(ex + 20, ey - 28, ex + 20, ey - 10, ex, ey + 5); ctx.fill();
+                // 알 리본
+                ctx.fillStyle = maneColor;
+                ctx.beginPath(); ctx.ellipse(ex - 28, ey - 45, 18, 11, -0.6, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.ellipse(ex + 8, ey - 58, 18, 11, 0.6, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(ex - 10, ey - 50, 8, 0, Math.PI * 2); ctx.fill();
+                
+                // 이모지 장식
+                ctx.font = '30px serif'; ctx.fillText('💕', ex - 80, ey - 30); ctx.fillText('✨', ex + 50, ey - 40);
+                ctx.font = '20px serif'; ctx.fillText('👶', ex + 55, ey + 20);
+                return; 
+            }
             
             const size = stage.size, type = stage.type;
             let canvasWidth = size;
@@ -485,10 +530,8 @@
                 btn.classList.add('wrong');
                 showVoiceMessage(false);
                 combo = 0;
-                lives--;
-                document.getElementById('lives').textContent = lives;
-                if (lives <= 0) gameOver();
-                else setTimeout(() => btn.classList.remove('wrong'), 400);
+                // 3진아웃 제거 - 틀려도 게임 계속!
+                setTimeout(() => btn.classList.remove('wrong'), 400);
             }
         }
         
@@ -547,9 +590,8 @@
         }
         
         function restartGame() {
-            score = 0; lives = 3; level = 1; combo = 0; roundsInLevel = 0; currentStage = 0; generation = 0; gameRunning = true;
+            score = 0; level = 1; combo = 0; roundsInLevel = 0; currentStage = 0; generation = 0; gameRunning = true;
             document.getElementById('score').textContent = score;
-            document.getElementById('lives').textContent = lives;
             document.getElementById('level').textContent = level;
             document.getElementById('gameOver').style.display = 'none';
             updateStageName();

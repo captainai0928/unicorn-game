@@ -117,9 +117,7 @@
     
     <button class="music-btn" id="musicBtn" onclick="toggleMusic()">🔇</button>
     <div id="ytPlayer"></div>
-    <audio id="bgmAudio" loop preload="auto">
-        <source src="https://cdn.pixabay.com/audio/2024/11/29/audio_5c385a377b.mp3" type="audio/mpeg">
-    </audio>
+    <div id="ytPlayer"></div>
     
     <div class="header">
         <h1>🦄 유니콘 성장 게임</h1>
@@ -617,41 +615,63 @@
         nextRound();
         
         let musicPlaying = false;
-        let bgmAudio = null;
+        let ytPlayer = null;
+        let ytReady = false;
         
-        // 페이지 로드 후 오디오 초기화
-        window.addEventListener('DOMContentLoaded', function() {
-            bgmAudio = document.getElementById('bgmAudio');
-            if (bgmAudio) {
-                bgmAudio.volume = 0.4;
-            }
-        });
+        // YouTube IFrame API 로드
+        const tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(tag);
+        
+        function onYouTubeIframeAPIReady() {
+            ytPlayer = new YT.Player('ytPlayer', {
+                height: '1',
+                width: '1',
+                videoId: 'VxxYwAzuk4k',
+                playerVars: {
+                    autoplay: 0,
+                    loop: 1,
+                    playlist: 'VxxYwAzuk4k',
+                    playsinline: 1
+                },
+                events: {
+                    onReady: function() {
+                        ytReady = true;
+                        ytPlayer.setVolume(40);
+                        document.getElementById('musicBtn').style.background = 'rgba(100,255,100,0.7)';
+                    },
+                    onStateChange: function(e) {
+                        if (e.data === YT.PlayerState.PLAYING) {
+                            musicPlaying = true;
+                            document.getElementById('musicBtn').textContent = '🎵';
+                            document.getElementById('musicBtn').classList.add('playing');
+                        } else if (e.data === YT.PlayerState.PAUSED) {
+                            musicPlaying = false;
+                            document.getElementById('musicBtn').textContent = '🔇';
+                            document.getElementById('musicBtn').classList.remove('playing');
+                        } else if (e.data === YT.PlayerState.ENDED) {
+                            ytPlayer.playVideo();
+                        }
+                    },
+                    onError: function(e) {
+                        console.log('YouTube 에러:', e.data);
+                        document.getElementById('musicBtn').textContent = '❌';
+                        document.getElementById('musicBtn').style.background = 'rgba(255,100,100,0.7)';
+                    }
+                }
+            });
+        }
         
         function toggleMusic() {
             const btn = document.getElementById('musicBtn');
-            if (!bgmAudio) {
-                bgmAudio = document.getElementById('bgmAudio');
-                if (!bgmAudio) {
-                    alert('음악을 로드할 수 없습니다');
-                    return;
-                }
-                bgmAudio.volume = 0.4;
+            if (!ytReady) {
+                btn.textContent = '⏳';
+                return;
             }
-            if (musicPlaying) { 
-                bgmAudio.pause(); 
-                btn.textContent = '🔇'; 
-                btn.classList.remove('playing'); 
-                musicPlaying = false; 
-            } else { 
-                bgmAudio.play().then(() => {
-                    btn.textContent = '🎵'; 
-                    btn.classList.add('playing'); 
-                    musicPlaying = true;
-                }).catch(e => {
-                    console.log('오디오 재생 실패:', e);
-                    alert('음악 재생 실패: ' + e.message);
-                    btn.textContent = '❌';
-                });
+            if (musicPlaying) {
+                ytPlayer.pauseVideo();
+            } else {
+                ytPlayer.playVideo();
             }
         }
     </script>
